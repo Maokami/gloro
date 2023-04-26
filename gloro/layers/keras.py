@@ -17,14 +17,11 @@ from gloro.lc import PowerMethod
 
 
 class Dense(KerasDense, GloroLayer):
-
     def __init__(self, *args, lc_strategy=None, **kwargs):
         # TODO: make sure `activation` isn't passed as an arg.
         super().__init__(*args, **kwargs)
 
-        self._lc_strategy = LipschitzComputationStrategy.get(
-            lc_strategy or 'power'
-        )
+        self._lc_strategy = LipschitzComputationStrategy.get(lc_strategy or "power")
 
     @property
     def lc_strategy(self):
@@ -44,9 +41,7 @@ class Conv2D(KerasConv2D, GloroLayer):
         # TODO: make sure `activation` isn't passed as an arg.
         super().__init__(*args, **kwargs)
 
-        self._lc_strategy = LipschitzComputationStrategy.get(
-            lc_strategy or 'power'
-        )
+        self._lc_strategy = LipschitzComputationStrategy.get(lc_strategy or "power")
 
     @property
     def lc_strategy(self):
@@ -67,38 +62,59 @@ class Conv2D(KerasConv2D, GloroLayer):
 
 
 class AveragePooling2D(KerasAveragePooling2D, GloroLayer):
-
     def build(self, input_shape):
         super().build(input_shape)
 
         # Average pooling can be thought of as a convolution where the kernel is
         # fixed to be 1 / pool_area at each entry.
-        self._lc = PowerMethod(100).build(
-            tf.eye(input_shape[-1])[None,None] * (
-                tf.ones(self.pool_size)[:,:,None,None]) / (
-                    self.pool_size[0] * self.pool_size[1]),
-            input_shape=input_shape,
-            strides=self.strides,
-            padding=self.padding.upper(),
-        ).compute()
+        self._lc = (
+            PowerMethod(100)
+            .build(
+                tf.eye(input_shape[-1])[None, None]
+                * (tf.ones(self.pool_size)[:, :, None, None])
+                / (self.pool_size[0] * self.pool_size[1]),
+                input_shape=input_shape,
+                strides=self.strides,
+                padding=self.padding.upper(),
+            )
+            .compute()
+        )
 
     def lipschitz(self):
         return self._lc
 
 
 class Flatten(KerasFlatten, GloroLayer):
-
     def lipschitz(self):
-        return 1.
+        return 1.0
 
 
 class MaxPooling2D(KerasMaxPooling2D, GloroLayer):
-
     def lipschitz(self):
-        return 1.
+        return 1.0
 
 
 class ReLU(KerasReLU, GloroLayer):
+    def lipschitz(self):
+        return 1.0
+
+
+class CustomReLU(KerasReLU, GloroLayer):
+    def __init__(self, **kwargs):
+        super(CustomReLU, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        super(CustomReLU, self).build(input_shape)
+
+    def call(self, inputs, training=None, **kwargs):
+        min_value = tf.reduce_min(inputs)
+        max_value = tf.reduce_max(inputs)
+        tf.print("Minimum value of the input tensor:", min_value)
+        tf.print("Maximum value of the input tensor:", max_value)
+        return tf.keras.activations.relu(inputs)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
     def lipschitz(self):
-        return 1.
+        return 1.0
