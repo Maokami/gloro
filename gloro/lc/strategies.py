@@ -19,7 +19,6 @@ from gloro.utils import set_value
 
 
 class LipschitzComputationStrategy(object):
-
     @abstractmethod
     def build(W, **kwargs):
         raise NotImplementedError
@@ -36,16 +35,14 @@ class LipschitzComputationStrategy(object):
         if isinstance(strategy, LipschitzComputationStrategy):
             return strategy
 
-        if strategy == 'power':
+        if strategy == "power":
             return PowerMethod()
 
-        elif strategy == 'eigh':
+        elif strategy == "eigh":
             return Eigh()
 
         else:
-            raise ValueError(
-                f'unknown Lipschitz computation strategy: {strategy}'
-            )
+            raise ValueError(f"unknown Lipschitz computation strategy: {strategy}")
 
     @staticmethod
     def for_layer(layer):
@@ -69,41 +66,45 @@ class LipschitzComputationStrategy(object):
             )
 
         elif isinstance(layer, KerasAveragePooling2D):
-            lc = PowerMethod(100).build(
-                tf.eye(layer.input.shape[-1])[None,None] * (
-                    tf.ones(layer.pool_size)[:,:,None,None]) / (
-                        layer.pool_size[0] * layer.pool_size[1]),
-                input_shape=layer.input_shape,
-                strides=layer.strides,
-                padding=layer.padding.upper(),
-            ).compute()
+            lc = (
+                PowerMethod(100)
+                .build(
+                    tf.eye(layer.input.shape[-1])[None, None]
+                    * (tf.ones(layer.pool_size)[:, :, None, None])
+                    / (layer.pool_size[0] * layer.pool_size[1]),
+                    input_shape=layer.input_shape,
+                    strides=layer.strides,
+                    padding=layer.padding.upper(),
+                )
+                .compute()
+            )
 
             return lambda: lc
 
         elif isinstance(
             layer, (KerasReLU, KerasMaxPooling2D, KerasInput, KerasFlatten)
         ):
-            return lambda: 1.
-        
+            return lambda: 1.0
+
         print(
-            f'WARNING: No Lipschitz computation strategy is implemented for '
-            f'{type(layer)}. Using 1.0 as the default Lipschitz constant, but '
-            f'this may lead to incorrect certification if this is not a valid '
-            f'upper bound.'
+            f"WARNING: No Lipschitz computation strategy is implemented for "
+            f"{type(layer)}. Using 1.0 as the default Lipschitz constant, but "
+            f"this may lead to incorrect certification if this is not a valid "
+            f"upper bound."
         )
-        return lambda: 1.
+        return lambda: 1.0
 
 
 class PowerMethod(LipschitzComputationStrategy):
     def __init__(self, iterations=10, convergence_threshold=1e-5):
         self._iterations = tf.Variable(
             iterations,
-            dtype='int32',
+            dtype="int32",
             trainable=False,
         )
         self._convergence_threshold = tf.Variable(
             convergence_threshold,
-            dtype='float32',
+            dtype="float32",
             trainable=False,
         )
 
@@ -135,7 +136,7 @@ class PowerMethod(LipschitzComputationStrategy):
             # of the leading eigenvector.
             self._power_iterate = tf.Variable(
                 tf.random.truncated_normal((W.shape[1], 1)),
-                dtype='float32',
+                dtype="float32",
                 trainable=False,
             )
             self._forward = lambda x: W @ x
@@ -154,24 +155,27 @@ class PowerMethod(LipschitzComputationStrategy):
             iterate_shape = (1, *input_shape[1:])
             self._power_iterate = tf.Variable(
                 tf.random.truncated_normal(iterate_shape),
-                dtype='float32',
+                dtype="float32",
                 trainable=False,
             )
 
             self._forward = lambda x: tf.nn.conv2d(
-                x, W,
+                x,
+                W,
                 strides=strides,
                 padding=padding,
             )
             self._transpose = lambda Wx: tf.nn.conv2d_transpose(
-                Wx, W, iterate_shape,
+                Wx,
+                W,
+                iterate_shape,
                 strides=strides,
                 padding=padding,
             )
-            self._normalize = lambda x: l2_normalize(x, axis=(1,2,3))
+            self._normalize = lambda x: l2_normalize(x, axis=(1, 2, 3))
 
         else:
-            raise ValueError('PowerMethod only supports 2D or 4D kernels')
+            raise ValueError("PowerMethod only supports 2D or 4D kernels")
 
         return self
 
@@ -183,7 +187,7 @@ class PowerMethod(LipschitzComputationStrategy):
             x = self._transpose(Wx)
             x = self._normalize(x)
 
-            diff = tf.reduce_sum((x - x_orig)**2.)
+            diff = tf.reduce_sum((x - x_orig) ** 2.0)
 
             return i + 1, tf.stop_gradient(x), diff
 
@@ -191,7 +195,8 @@ class PowerMethod(LipschitzComputationStrategy):
 
         _, x, _ = tf.while_loop(
             lambda i, _, diff: tf.logical_and(
-                i < self._iterations, diff > self._convergence_threshold),
+                i < self._iterations, diff > self._convergence_threshold
+            ),
             body,
             [tf.constant(0), x, tf.constant(np.inf)],
         )
@@ -200,17 +205,15 @@ class PowerMethod(LipschitzComputationStrategy):
         self.iterate.assign(x)
 
         return tf.sqrt(
-            tf.reduce_sum((self._forward(x))**2.) / (
-                tf.reduce_sum(x**2.) + gloro.constants.EPS
-            )
+            tf.reduce_sum((self._forward(x)) ** 2.0)
+            / (tf.reduce_sum(x**2.0) + gloro.constants.EPS)
         )
 
 
 class Eigh(LipschitzComputationStrategy):
-
     def build(self, W, **kwargs):
         if len(W.shape) != 2:
-            raise ValueError('Eigh only supports 2D kernels')
+            raise ValueError("Eigh only supports 2D kernels")
 
         self._A = lambda: tf.transpose(W) @ W
 
