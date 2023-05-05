@@ -86,6 +86,10 @@ class GloroNet(Model):
         self._lipschitz_computers = [
             LipschitzComputationStrategy.for_layer(layer) for layer in model.layers[:-1]
         ]
+        self._infnorm_lipschitz_computers = [
+            LipschitzComputationStrategy.for_layer_inf(layer)
+            for layer in model.layers[:-1]
+        ]
         self._num_classes = num_classes
         self._f = GloroNet._ModelContainer(model)
 
@@ -189,6 +193,10 @@ class GloroNet(Model):
     def print_lipschitz_constants(self):
         for idx, lc_computer in enumerate(self._lipschitz_computers):
             print(f"Layer {idx}: Lipschitz constant = {lc_computer()}")
+
+    def print_inf_lipschitz_constants(self):
+        for idx, lc_computer in enumerate(self._infnorm_lipschitz_computers):
+            print(f"Layer {idx}: Inf norm Lipschitz constant = {lc_computer()}")
 
     def freeze_lc(self, threshold=1e-4, max_tries=100):
         # Make sure sub-Lipschitz constant has reached convergence.

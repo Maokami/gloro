@@ -12,8 +12,10 @@ def add_extra_column(y):
     else:
         return add_extra_column_tf(y)
 
+
 def add_extra_column_tf(y):
     return tf.concat((y, tf.zeros((tf.shape(y)[0], 1))), axis=1)
+
 
 def add_extra_column_np(y):
     return np.concatenate((y, np.zeros((y.shape[0], 1))), axis=1)
@@ -38,8 +40,14 @@ def get_value(x):
 
 def l2_normalize(x, axis=None):
     return x / (
-        tf.sqrt(tf.reduce_sum(x**2., axis=axis, keepdims=True)) +
-            gloro.constants.EPS)
+        tf.sqrt(tf.reduce_sum(x**2.0, axis=axis, keepdims=True)) + gloro.constants.EPS
+    )
+
+
+def linf_normalize(x, axis=None):
+    return x / (
+        tf.reduce_max(tf.abs(x), axis=axis, keepdims=True) + gloro.constants.EPS
+    )
 
 
 def print_if_verbose(verbose):
