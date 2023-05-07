@@ -36,7 +36,7 @@ class LipschitzComputationStrategy(object):
             return strategy
 
         if strategy == "power":
-            return PowerMethod2()
+            return PowerMethod()
 
         elif strategy == "eigh":
             return Eigh()
