@@ -22,7 +22,7 @@ def approx_cnn_2C2F(
         padding="same",
         kernel_initializer=initialization,
     )(x)
-    z = Lambda(lambda x: relu_approx(x, alpha, 3))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
 
     z = Conv2D(
         32,
@@ -31,11 +31,11 @@ def approx_cnn_2C2F(
         padding="same",
         kernel_initializer=initialization,
     )(z)
-    z = Lambda(lambda x: relu_approx(x, alpha, 8))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
 
     z = Flatten()(z)
     z = Dense(100, kernel_initializer=initialization)(z)
-    z = Lambda(lambda x: relu_approx(x, alpha, 36))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 50))(z)
 
     y = Dense(num_classes, kernel_initializer=initialization)(z)
 
