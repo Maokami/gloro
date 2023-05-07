@@ -29,6 +29,8 @@ import approx_architectures
 from utils import get_data
 from utils import get_optimizer
 
+import os
+
 
 def train_gloro(
     dataset,
