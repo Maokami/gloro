@@ -121,6 +121,60 @@ def approx_cnn_6C2F(
 
     z = Flatten()(z)
     z = Dense(512, kernel_initializer=initialization)(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 80))(z)
+
+    y = Dense(num_classes, kernel_initializer=initialization)(z)
+
+    return x, y
+
+
+def approx_cnn_8C2F(
+    input_shape,
+    num_classes,
+    activation="minmax",
+    initialization="orthogonal",
+):
+    x = Input(input_shape)
+
+    z = Conv2D(64, 3, padding="same", kernel_initializer=initialization)(x)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
+    z = Conv2D(64, 3, padding="same", kernel_initializer=initialization)(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
+    z = Conv2D(
+        64,
+        4,
+        strides=2,
+        padding="same",
+        kernel_initializer=initialization,
+    )(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 50))(z)
+
+    z = Conv2D(128, 3, padding="same", kernel_initializer=initialization)(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 100))(z)
+    z = Conv2D(128, 3, padding="same", kernel_initializer=initialization)(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 100))(z)
+    z = Conv2D(
+        128,
+        4,
+        strides=2,
+        padding="same",
+        kernel_initializer=initialization,
+    )(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 100))(z)
+
+    z = Conv2D(256, 3, padding="same", kernel_initializer=initialization)(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 100))(z)
+    z = Conv2D(
+        256,
+        4,
+        strides=2,
+        padding="same",
+        kernel_initializer=initialization,
+    )(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 100))(z)
+
+    z = Flatten()(z)
+    z = Dense(256, kernel_initializer=initialization)(z)
     z = Lambda(lambda x: relu_approx(x, alpha, 100))(z)
 
     y = Dense(num_classes, kernel_initializer=initialization)(z)
@@ -128,60 +182,6 @@ def approx_cnn_6C2F(
     return x, y
 
 
-# def cnn_8C2F(
-#    input_shape,
-#    num_classes,
-#    activation="minmax",
-#    initialization="orthogonal",
-# ):
-#    x = Input(input_shape)
-#
-#    z = Conv2D(64, 3, padding="same", kernel_initializer=initialization)(x)
-#    z = Activation(activation)(z)
-#    z = Conv2D(64, 3, padding="same", kernel_initializer=initialization)(z)
-#    z = Activation(activation)(z)
-#    z = Conv2D(
-#        64,
-#        4,
-#        strides=2,
-#        padding="same",
-#        kernel_initializer=initialization,
-#    )(z)
-#    z = Activation(activation)(z)
-#
-#    z = Conv2D(128, 3, padding="same", kernel_initializer=initialization)(z)
-#    z = Activation(activation)(z)
-#    z = Conv2D(128, 3, padding="same", kernel_initializer=initialization)(z)
-#    z = Activation(activation)(z)
-#    z = Conv2D(
-#        128,
-#        4,
-#        strides=2,
-#        padding="same",
-#        kernel_initializer=initialization,
-#    )(z)
-#    z = Activation(activation)(z)
-#
-#    z = Conv2D(256, 3, padding="same", kernel_initializer=initialization)(z)
-#    z = Activation(activation)(z)
-#    z = Conv2D(
-#        256,
-#        4,
-#        strides=2,
-#        padding="same",
-#        kernel_initializer=initialization,
-#    )(z)
-#    z = Activation(activation)(z)
-#
-#    z = Flatten()(z)
-#    z = Dense(256, kernel_initializer=initialization)(z)
-#    z = Activation(activation)(z)
-#
-#    y = Dense(num_classes, kernel_initializer=initialization)(z)
-#
-#    return x, y
-#
-#
 # def _cnn_CxCC2F(
 #    backbone_depth,
 #    backbone_width,
