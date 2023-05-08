@@ -94,9 +94,9 @@ def approx_cnn_6C2F(
     x = Input(input_shape)
 
     z = Conv2D(32, 3, padding="same", kernel_initializer=initialization)(x)
-    z = Lambda(lambda x: relu_approx(x, alpha, 2))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
     z = Conv2D(32, 3, padding="same", kernel_initializer=initialization)(z)
-    z = Lambda(lambda x: relu_approx(x, alpha, 4))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
     z = Conv2D(
         32,
         4,
@@ -104,10 +104,10 @@ def approx_cnn_6C2F(
         padding="same",
         kernel_initializer=initialization,
     )(z)
-    z = Lambda(lambda x: relu_approx(x, alpha, 6))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
 
     z = Conv2D(64, 3, padding="same", kernel_initializer=initialization)(z)
-    z = Lambda(lambda x: relu_approx(x, alpha, 8))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
     z = Conv2D(64, 3, padding="same", kernel_initializer=initialization)(z)
     z = Lambda(lambda x: relu_approx(x, alpha, 10))(z)
     z = Conv2D(
@@ -117,11 +117,11 @@ def approx_cnn_6C2F(
         padding="same",
         kernel_initializer=initialization,
     )(z)
-    z = Lambda(lambda x: relu_approx(x, alpha, 16))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 20))(z)
 
     z = Flatten()(z)
     z = Dense(512, kernel_initializer=initialization)(z)
-    z = Lambda(lambda x: relu_approx(x, alpha, 80))(z)
+    z = Lambda(lambda x: relu_approx(x, alpha, 100))(z)
 
     y = Dense(num_classes, kernel_initializer=initialization)(z)
 
