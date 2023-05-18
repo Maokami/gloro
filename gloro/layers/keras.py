@@ -44,6 +44,11 @@ class Dense(KerasDense, GloroLayer):
     def propagate_error(self, error):
         return self.lipschitz_inf() * error
 
+    def bound(self, input_bound):
+        lc = self.lipschitz_inf()
+        lower_bound, upper_bound = input_bound
+        return (lower_bound * lc, upper_bound * lc)
+
 
 class Conv2D(KerasConv2D, GloroLayer):
     def __init__(self, *args, lc_strategy=None, **kwargs):
@@ -76,6 +81,12 @@ class Conv2D(KerasConv2D, GloroLayer):
 
     def propagate_error(self, error):
         return self.lipschitz_inf() * error
+
+    # TODO: bias
+    def bound(self, input_bound):
+        lc = self.lipschitz_inf()
+        lower_bound, upper_bound = input_bound
+        return (lower_bound * lc, upper_bound * lc)
 
 
 class AveragePooling2D(KerasAveragePooling2D, GloroLayer):
@@ -113,6 +124,9 @@ class AveragePooling2D(KerasAveragePooling2D, GloroLayer):
     def propagate_error(self, error):
         return self.lipschitz_inf() * error
 
+    def bound(self, input_bound):
+        return input_bound
+
 
 class Flatten(KerasFlatten, GloroLayer):
     def lipschitz(self):
@@ -123,6 +137,9 @@ class Flatten(KerasFlatten, GloroLayer):
 
     def propagate_error(self, error):
         return error
+
+    def bound(self, input_bound):
+        return input_bound
 
 
 class MaxPooling2D(KerasMaxPooling2D, GloroLayer):
@@ -135,6 +152,9 @@ class MaxPooling2D(KerasMaxPooling2D, GloroLayer):
     def propagate_error(self, error):
         return error
 
+    def bound(self, input_bound):
+        return input_bound
+
 
 class ReLU(KerasReLU, GloroLayer):
     def lipschitz(self):
@@ -146,6 +166,10 @@ class ReLU(KerasReLU, GloroLayer):
     def propagate_error(self, error):
         return error
 
+    def bound(self, input_bound):
+        _, upper_bound = input_bound
+        return (0, upper_bound)
+
 
 # TODO: Consider input shape in propagate_error
 class ApproxReLU(KerasLambda, GloroLayer):
@@ -155,6 +179,13 @@ class ApproxReLU(KerasLambda, GloroLayer):
         self.range = (-B, B)
 
         super().__init__(self.relu_approx, **kwargs)
+
+    def set_alpha(self, alpha):
+        self.alpha = alpha
+
+    def set_B(self, B):
+        self.B = B
+        self.range = (-B, B)
 
     # TODO
     def relu_approx(self, x):
@@ -171,3 +202,7 @@ class ApproxReLU(KerasLambda, GloroLayer):
 
     def propagate_error(self, error):
         return error + self.approx_error()
+
+    def bound(self, input_bound):
+        _, upper_bound = input_bound
+        return (0, upper_bound)

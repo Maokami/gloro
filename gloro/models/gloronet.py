@@ -16,6 +16,9 @@ from gloro.training.losses import get as get_loss
 from gloro.utils import get_value
 from gloro.utils import set_value
 
+from gloro.layers import ApproxReLU
+import math
+
 
 class GloroNet(Model):
     """
@@ -92,7 +95,6 @@ class GloroNet(Model):
         ]
         self._num_classes = num_classes
         self._f = GloroNet._ModelContainer(model)
-        self._total_error = self.compute_total_error(model, 0)
 
         # We allow the model to freeze its sub-Lipschitz constant after training
         # in order to facilitate even faster prediction and certification at
@@ -382,11 +384,21 @@ class GloroNet(Model):
             "_hardcoded_lc": float(get_value(self._hardcoded_lc)),
         }
 
-    def compute_total_error(self, model, initial_error):
+    def compute_total_error(self, initial_error):
         error = initial_error
-        for layer in model.layers[1:-1]:
+        for layer in self.f.layers[1:-1]:
             error = layer.propagate_error(error)
         return error
+
+    def compute_bound(self):
+        bound = (-1, 1)
+        for layer in self.f.layers[1:-1]:
+            if isinstance(layer, ApproxReLU):
+                lb, ub = bound
+                B = math.ceil(max(abs(lb), abs(ub)))
+                layer.set_B(B)
+            bound = layer.bound(bound)
+            print(bound)
 
     @classmethod
     def load_model(cls, file_name, custom_objects={}, converge=True):
