@@ -16,3 +16,10 @@ class GloroLayer(Layer):
         Returns the Lipschitz constant of this layer.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def propagate_error(self, error):
+        """
+        Returns the error propagation from previous error.
+        """
+        raise NotImplementedError

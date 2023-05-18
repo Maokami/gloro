@@ -74,3 +74,4 @@ sftp-config*
 
 # Mac OS
 *.DS_Store
+/.vscode

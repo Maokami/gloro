@@ -22,21 +22,17 @@ class MinMax(GloroLayer):
         x_flat = self._flat_op(x)
         x_shape = tf.shape(x_flat)
 
-        grouped_x = tf.reshape(
-            x_flat,
-            tf.concat([x_shape[:-1], (-1, 2)], -1))
+        grouped_x = tf.reshape(x_flat, tf.concat([x_shape[:-1], (-1, 2)], -1))
 
         min_x = tf.reduce_min(grouped_x, axis=-1, keepdims=True)
         max_x = tf.reduce_max(grouped_x, axis=-1, keepdims=True)
 
-        sorted_x = tf.reshape(
-            tf.concat([min_x, max_x], axis=-1),
-            tf.shape(x))
+        sorted_x = tf.reshape(tf.concat([min_x, max_x], axis=-1), tf.shape(x))
 
         return sorted_x
 
     def lipschitz(self):
-        return 1.
+        return 1.0
 
 
 class InvertibleDownsampling(GloroLayer):
@@ -60,14 +56,15 @@ class InvertibleDownsampling(GloroLayer):
                 for i in range(self.pool_size[0])
                 for j in range(self.pool_size[1])
             ],
-            axis=-1)
+            axis=-1,
+        )
 
     def lipschitz(self):
-        return 1.
+        return 1.0
 
     def get_config(self):
         config = {
-            'pool_size': self._pool_size,
+            "pool_size": self._pool_size,
         }
         base_config = super().get_config()
 
@@ -75,10 +72,10 @@ class InvertibleDownsampling(GloroLayer):
 
 
 class Scaling(GloroLayer):
-    def __init__(self, init=1., **kwargs):
+    def __init__(self, init=1.0, **kwargs):
         super().__init__(**kwargs)
 
-        self._weight = tf.Variable(init, name='alpha', trainable=True)
+        self._weight = tf.Variable(init, name="alpha", trainable=True)
 
     @property
     def alpha(self):
@@ -96,7 +93,7 @@ class Scaling(GloroLayer):
 
     def get_config(self):
         config = {
-            'init': self.alpha,
+            "init": self.alpha,
         }
         base_config = super().get_config()
 

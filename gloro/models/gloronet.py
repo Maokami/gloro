@@ -21,6 +21,7 @@ class GloroNet(Model):
     """
     TODO: docstring.
     """
+
     def __init__(
         self,
         inputs=None,
@@ -29,21 +30,19 @@ class GloroNet(Model):
         *,
         model=None,
         _lc_frozen=False,
-        _hardcoded_lc=1.,
+        _hardcoded_lc=1.0,
         _skip_init=False,
         **kwargs,
     ):
         # Validate the provided parameters.
         if epsilon is None:
-            raise ValueError('`epsilon` is required')
+            raise ValueError("`epsilon` is required")
 
         if model is None and (inputs is None or outputs is None):
-            raise ValueError(
-                'must specify either `inputs` and `outputs` or `model`')
+            raise ValueError("must specify either `inputs` and `outputs` or `model`")
 
         if model is not None and inputs is not None and outputs is not None:
-            raise ValueError(
-                'cannot specify both `inputs` & `outputs` and `model`')
+            raise ValueError("cannot specify both `inputs` & `outputs` and `model`")
 
         # Collect and validate inputs and outputs.
         if inputs is None or outputs is None:
@@ -58,55 +57,54 @@ class GloroNet(Model):
 
         if len(outputs) > 1:
             raise ValueError(
-                f'only models with a single output are supported, but got '
-                f'{len(outputs)} outputs'
+                f"only models with a single output are supported, but got "
+                f"{len(outputs)} outputs"
             )
         output = outputs[0]
 
         if len(output.shape) != 2:
             raise ValueError(
-                f'output shape must have shape (None, m), where m is the '
-                f'number of classes, but got {output.shape}'
+                f"output shape must have shape (None, m), where m is the "
+                f"number of classes, but got {output.shape}"
             )
         num_classes = output.shape[1]
 
-        if not hasattr(model.layers[-1], 'kernel'):
+        if not hasattr(model.layers[-1], "kernel"):
             raise ValueError(
-                f'last layer is expected to have a `kernel` attribute, but no '
-                f'such attribute was found on {model.layers[-1]}. It is '
-                f'possible that the model you supplied ends with an activation '
-                f'such as softmax, which is not accepted; in this case, you '
-                f'should provide a model that ends with *logits* instead.'
+                f"last layer is expected to have a `kernel` attribute, but no "
+                f"such attribute was found on {model.layers[-1]}. It is "
+                f"possible that the model you supplied ends with an activation "
+                f"such as softmax, which is not accepted; in this case, you "
+                f"should provide a model that ends with *logits* instead."
             )
 
         super().__init__(inputs, outputs, **kwargs)
 
         self._epsilon = self._epsilon = tf.Variable(
-            epsilon, dtype=K.floatx(), name='epsilon', trainable=False
+            epsilon, dtype=K.floatx(), name="epsilon", trainable=False
         )
         self._lipschitz_computers = [
-            LipschitzComputationStrategy.for_layer(layer)
-            for layer in model.layers[:-1]
+            LipschitzComputationStrategy.for_layer(layer) for layer in model.layers[:-1]
         ]
         self._num_classes = num_classes
         self._f = GloroNet._ModelContainer(model)
+        self._total_error = self.compute_total_error(model, 0)
 
         # We allow the model to freeze its sub-Lipschitz constant after training
         # in order to facilitate even faster prediction and certification at
         # test time.
         self._lc_frozen = tf.Variable(
             int(_lc_frozen),
-            name='lc_frozen',
+            name="lc_frozen",
             trainable=False,
         )
         self._hardcoded_lc = tf.Variable(
             _hardcoded_lc,
-            name='hardcoded_lc',
+            name="hardcoded_lc",
             trainable=False,
         )
 
-        self.output_names = ['main']
-
+        self.output_names = ["main"]
 
     @property
     def epsilon(self):
@@ -137,7 +135,6 @@ class GloroNet(Model):
     def lc_frozen(self, new_value):
         set_value(self._lc_frozen, int(new_value))
 
-
     # Lipschitz computation.
 
     @property
@@ -149,11 +146,10 @@ class GloroNet(Model):
         return tf.switch_case(
             self._lc_frozen * 1,
             branch_fns={
-                0: lambda:
-                    tf.reduce_prod([
-                        lipschitz() for lipschitz in self._lipschitz_computers
-                    ]),
-                1: lambda: self._hardcoded_lc * 1.,
+                0: lambda: tf.reduce_prod(
+                    [lipschitz() for lipschitz in self._lipschitz_computers]
+                ),
+                1: lambda: self._hardcoded_lc * 1.0,
             },
         )
 
@@ -167,7 +163,7 @@ class GloroNet(Model):
         kW_j = tf.gather(tf.transpose(kW), j)
 
         # Get weights that predict the value y_j - y_i for all i != j.
-        kW_ij = kW_j[:,:,None] - kW[None]
+        kW_ij = kW_j[:, :, None] - kW[None]
 
         return tf.sqrt(tf.reduce_sum(kW_ij * kW_ij, axis=1))
 
@@ -187,7 +183,7 @@ class GloroNet(Model):
 
         return tf.where(
             tf.equal(y, y_j),
-            tf.zeros_like(K_ij) - 1.,
+            tf.zeros_like(K_ij) - 1.0,
             K_ij,
         )
 
@@ -210,7 +206,6 @@ class GloroNet(Model):
         return self
 
     def run_lc_to_convergence(self, threshold=1e-4, max_tries=100):
-
         def body(i, k_prev, diff):
             k = tf.stop_gradient(self.sub_lipschitz)
             return [i + 1, k, tf.abs(k_prev - k)]
@@ -218,10 +213,9 @@ class GloroNet(Model):
         tf.while_loop(
             lambda i, k, diff: tf.logical_and(i < max_tries, diff > threshold),
             body,
-            [tf.constant(0), self.sub_lipschitz, tf.constant(np.inf)]
+            [tf.constant(0), self.sub_lipschitz, tf.constant(np.inf)],
         )
         return self
-
 
     # Prediction variations.
 
@@ -239,7 +233,7 @@ class GloroNet(Model):
         # K_ij is the Lipschitz constant on the margin y_j - y_i.
         K_ij = self._K_ij(self.sub_lipschitz, j)
 
-        margins = y_j - y # shape: (None, m)
+        margins = y_j - y  # shape: (None, m)
 
         # This is a certified lower bound on the distance from the point to the
         # boundary with class i, where i != j.
@@ -256,7 +250,6 @@ class GloroNet(Model):
         radius = self._margin_layer.certified_radius(y_pred)
 
         return y_pred.numpy(), radius.numpy()
-
 
     # Overriding `keras.Model` functions.
 
@@ -297,14 +290,14 @@ class GloroNet(Model):
     # of strings, for common losses/metrics. Here, we override `compile` to
     # enable the same for the built in losses implemented in `gloro.losses`.
     def compile(self, **kwargs):
-        if 'loss' in kwargs:
-            if isinstance(kwargs['loss'], str):
-                kwargs['loss'] = { 'main': get_loss(kwargs['loss']) }
+        if "loss" in kwargs:
+            if isinstance(kwargs["loss"], str):
+                kwargs["loss"] = {"main": get_loss(kwargs["loss"])}
             else:
-                kwargs['loss'] = { 'main': kwargs['loss'] }
+                kwargs["loss"] = {"main": kwargs["loss"]}
 
-        if 'metrics' in kwargs:
-            metrics = kwargs['metrics']
+        if "metrics" in kwargs:
+            metrics = kwargs["metrics"]
             new_metrics = []
 
             for metric in metrics:
@@ -313,7 +306,7 @@ class GloroNet(Model):
 
                 new_metrics.append(metric)
 
-            kwargs['metrics'] = new_metrics
+            kwargs["metrics"] = new_metrics
 
         super().compile(**kwargs)
 
@@ -329,8 +322,8 @@ class GloroNet(Model):
         if update_iterates:
             includes_update_iterates = False
 
-            if 'callbacks' in kwargs:
-                callbacks = kwargs['callbacks']
+            if "callbacks" in kwargs:
+                callbacks = kwargs["callbacks"]
 
                 for callback in callbacks:
                     if isinstance(callback, UpdatePowerIterates):
@@ -340,30 +333,27 @@ class GloroNet(Model):
                 callbacks = []
 
             if not includes_update_iterates:
-                kwargs['callbacks'] = [
-                    UpdatePowerIterates(verbose=True),
-                    *callbacks
-                ]
+                kwargs["callbacks"] = [UpdatePowerIterates(verbose=True), *callbacks]
 
         return super().fit(*args, **kwargs)
 
     # We save and load GloRo Nets using our own file format.
     def save(self, file_name, overwrite=True):
-        if file_name.endswith('.h5'):
+        if file_name.endswith(".h5"):
             file_name = file_name[:-3]
 
-        elif file_name.endswith('.gloronet'):
+        elif file_name.endswith(".gloronet"):
             file_name = file_name[:-9]
 
         try:
             os.mkdir(file_name)
 
-            self.f.save(f'{file_name}/f.h5')
+            self.f.save(f"{file_name}/f.h5")
 
-            with open(f'{file_name}/config.json', 'w') as json_file:
+            with open(f"{file_name}/config.json", "w") as json_file:
                 json.dump(self.get_config(), json_file)
 
-            with tarfile.open(f'{file_name}.gloronet', 'w:gz') as tar:
+            with tarfile.open(f"{file_name}.gloronet", "w:gz") as tar:
                 tar.add(file_name, arcname=os.path.basename(file_name))
 
         finally:
@@ -371,10 +361,18 @@ class GloroNet(Model):
 
     def get_config(self):
         return {
-            'epsilon': float(self.epsilon),
-            '_lc_frozen': bool(self.lc_frozen),
-            '_hardcoded_lc': float(get_value(self._hardcoded_lc)),
+            "epsilon": float(self.epsilon),
+            "_lc_frozen": bool(self.lc_frozen),
+            "_hardcoded_lc": float(get_value(self._hardcoded_lc)),
         }
+
+    def compute_total_error(self, model, initial_error):
+        error = initial_error
+        # We iterate in reverse order to go from the output layer to the input layer
+        for layer in model.layers[1:]:
+            # Assuming every layer in the model is a GloroLayer with `propagate_error` method
+            error = layer.propagate_error(error)
+        return error
 
     @classmethod
     def load_model(cls, file_name, custom_objects={}, converge=True):
@@ -382,40 +380,37 @@ class GloroNet(Model):
             gloro.constants.GLORO_CUSTOM_OBJECTS.copy(), **custom_objects
         )
 
-        if file_name.endswith('.h5'):
+        if file_name.endswith(".h5"):
             file_name = file_name[:-3]
 
-        elif file_name.endswith('.gloronet'):
+        elif file_name.endswith(".gloronet"):
             file_name = file_name[:-9]
 
-        temp_dir = f'{file_name}___'
+        temp_dir = f"{file_name}___"
 
         try:
             os.mkdir(temp_dir)
 
-            with tarfile.open(f'{file_name}.gloronet', 'r:gz') as tar:
-
+            with tarfile.open(f"{file_name}.gloronet", "r:gz") as tar:
                 for member in tar:
-                    if member.name.endswith('.h5'):
-                        tar.extract(member, f'{temp_dir}')
+                    if member.name.endswith(".h5"):
+                        tar.extract(member, f"{temp_dir}")
 
                         model = tf.keras.models.load_model(
-                            f'{temp_dir}/{member.name}',
-                            custom_objects=custom_objects
+                            f"{temp_dir}/{member.name}", custom_objects=custom_objects
                         )
 
-                    elif member.name.endswith('.json'):
+                    elif member.name.endswith(".json"):
                         with tar.extractfile(member) as f:
                             config = json.load(f)
         finally:
             shutil.rmtree(temp_dir)
 
-        if '_lc_frozen' not in config or not config['_lc_frozen']:
+        if "_lc_frozen" not in config or not config["_lc_frozen"]:
             if converge:
                 return cls(model=model, **config).run_lc_to_convergence()
         else:
             return cls(model=model, **config)
-
 
     # This allows us to store the original model on the `GloroNet` instance
     # without keras finding it.

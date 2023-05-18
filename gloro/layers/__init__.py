@@ -1,5 +1,3 @@
-from tensorflow.keras.layers import Input
-
 from gloro.layers.base import GloroLayer
 from gloro.layers.blocks import LiResNetBlock
 from gloro.layers.custom import InvertibleDownsampling
@@ -11,3 +9,4 @@ from gloro.layers.keras import Dense
 from gloro.layers.keras import Flatten
 from gloro.layers.keras import MaxPooling2D
 from gloro.layers.keras import ReLU
+from gloro.layers.keras import ApproxReLU
