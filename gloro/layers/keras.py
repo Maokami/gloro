@@ -36,8 +36,13 @@ class Dense(KerasDense, GloroLayer):
     def lipschitz(self):
         return self.lc_strategy.compute()
 
+    def lipschitz_inf(self):
+        w = self.kernel
+        lc = tf.reduce_max(tf.reduce_sum(tf.abs(w), axis=1, keepdims=False))
+        return lc
+
     def propagate_error(self, error):
-        return self.lipschitz() * error
+        return self.lipschitz_inf() * error
 
 
 class Conv2D(KerasConv2D, GloroLayer):
@@ -64,8 +69,13 @@ class Conv2D(KerasConv2D, GloroLayer):
     def lipschitz(self):
         return self.lc_strategy.compute()
 
+    def lipschitz_inf(self):
+        w = self.kernel
+        lc = tf.reduce_max(tf.reduce_sum(tf.abs(w), axis=[0, 1, 2], keepdims=False))
+        return lc
+
     def propagate_error(self, error):
-        return self.lipschitz() * error
+        return self.lipschitz_inf() * error
 
 
 class AveragePooling2D(KerasAveragePooling2D, GloroLayer):
@@ -90,12 +100,25 @@ class AveragePooling2D(KerasAveragePooling2D, GloroLayer):
     def lipschitz(self):
         return self._lc
 
+    def lipschitz_inf(self):
+        w = (
+            tf.eye(input_shape[-1])[None, None]
+            * (tf.ones(self.pool_size)[:, :, None, None])
+            / (self.pool_size[0] * self.pool_size[1])
+        )
+
+        lc = tf.reduce_max(tf.reduce_sum(tf.abs(w), axis=[0, 1, 2], keepdims=False))
+        return lc
+
     def propagate_error(self, error):
-        return self.lipschitz() * error
+        return self.lipschitz_inf() * error
 
 
 class Flatten(KerasFlatten, GloroLayer):
     def lipschitz(self):
+        return 1.0
+
+    def lipschitz_inf(self):
         return 1.0
 
     def propagate_error(self, error):
@@ -106,12 +129,18 @@ class MaxPooling2D(KerasMaxPooling2D, GloroLayer):
     def lipschitz(self):
         return 1.0
 
+    def lipschitz_inf(self):
+        return 1.0
+
     def propagate_error(self, error):
         return error
 
 
 class ReLU(KerasReLU, GloroLayer):
     def lipschitz(self):
+        return 1.0
+
+    def lipschitz_inf(self):
         return 1.0
 
     def propagate_error(self, error):
@@ -132,6 +161,9 @@ class ApproxReLU(KerasLambda, GloroLayer):
         return tf.where(x >= 0, x, self.alpha * x)
 
     def lipschitz(self):
+        return 1.0
+
+    def lipschitz_inf(self):
         return 1.0
 
     def approx_error(self):

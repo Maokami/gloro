@@ -86,6 +86,10 @@ class GloroNet(Model):
         self._lipschitz_computers = [
             LipschitzComputationStrategy.for_layer(layer) for layer in model.layers[:-1]
         ]
+        # I assume this code will be used for only keras layers
+        self._lipschitz_computers_inf = [lambda: 1.0] + [
+            layer.lipschitz_inf for layer in model.layers[1:-1]
+        ]
         self._num_classes = num_classes
         self._f = GloroNet._ModelContainer(model)
         self._total_error = self.compute_total_error(model, 0)
@@ -151,6 +155,16 @@ class GloroNet(Model):
                 ),
                 1: lambda: self._hardcoded_lc * 1.0,
             },
+        )
+
+    @property
+    def sub_lipschitz_inf(self):
+        """
+        This is an upper bound on the Lipschitz(inf) constant up to the penultimate
+        layer.
+        """
+        return tf.reduce_prod(
+            [lipschitz() for lipschitz in self._lipschitz_computers_inf]
         )
 
     def _K_ij(self, k, j):
@@ -256,7 +270,9 @@ class GloroNet(Model):
     def call(self, X, training=False):
         y = self.f(X, training=training)
 
-        k = self.sub_lipschitz
+        # TODO : Support for l2 norms
+        # k = self.sub_lipschitz
+        k = self.sub_lipschitz_inf
 
         # j is the predicted class, and y_j is the corresponding logit.
         j = tf.argmax(y, axis=1)
@@ -368,9 +384,7 @@ class GloroNet(Model):
 
     def compute_total_error(self, model, initial_error):
         error = initial_error
-        # We iterate in reverse order to go from the output layer to the input layer
-        for layer in model.layers[1:]:
-            # Assuming every layer in the model is a GloroLayer with `propagate_error` method
+        for layer in model.layers[1:-1]:
             error = layer.propagate_error(error)
         return error
 
