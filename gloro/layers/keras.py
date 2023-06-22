@@ -10,10 +10,13 @@ from tensorflow.keras.layers import Dense as KerasDense
 from tensorflow.keras.layers import Flatten as KerasFlatten
 from tensorflow.keras.layers import MaxPooling2D as KerasMaxPooling2D
 from tensorflow.keras.layers import ReLU as KerasReLU
+from tensorflow.keras.layers import Lambda as KerasLambda
 
 from gloro.layers.base import GloroLayer
 from gloro.lc import LipschitzComputationStrategy
 from gloro.lc import PowerMethod
+
+from gloro.approximation import ReLU_approx
 
 
 class Dense(KerasDense, GloroLayer):
@@ -102,3 +105,25 @@ class ReLU(KerasReLU, GloroLayer):
 
     def lipschitz(self):
         return 1.
+
+class ApproxReLU(KerasLambda, GloroLayer):
+    def __init__(self, alpha, B=1, **kwargs):
+        self.alpha = alpha
+        self.B = B
+        self.range = (-B, B)
+
+        super().__init__(self.relu_approx, **kwargs)
+
+    def set_alpha(self, alpha):
+        self.alpha = alpha
+
+    def set_B(self, B):
+        self.B = B
+        self.range = (-B, B)
+
+    def relu_approx(self, x):
+        relu_dict = {"alpha": self.alpha, "B": self.B}
+        return ReLU_approx(x, relu_dict)
+
+    def lipschitz(self):
+        return 1.0

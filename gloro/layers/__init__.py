@@ -11,3 +11,4 @@ from gloro.layers.keras import Dense
 from gloro.layers.keras import Flatten
 from gloro.layers.keras import MaxPooling2D
 from gloro.layers.keras import ReLU
+from gloro.layers.keras import ApproxReLU
